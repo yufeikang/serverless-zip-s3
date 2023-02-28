@@ -1,0 +1,25 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  release:
+    environment: deploy-release
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-node@v3
+      with:
+        node-version: 16
+    - run: npm install
+    - run: ./node_modules/.bin/sls package
+    - uses: actions/upload-artifact@v3
+      with:
+        name: zip-s3-lambda.zip
+        path: .serverless/serverless-zip-s3.zip
