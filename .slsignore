@@ -1,0 +1,8 @@
+.env.example
+.git/*
+__tests__/*
+data.*
+*.sh
+.*
+*.md
+img/*
