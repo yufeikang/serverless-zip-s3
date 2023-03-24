@@ -57,7 +57,6 @@ module.exports.app = async (event, context, callback) => {
     const s3FileDownloadStreams = files.map((file) => {
         return {
             stream: new lazystream.Readable(() => {
-                console.log(`input file: ${file.key}`);
                 return s3
                     .getObject({ Bucket: inputBucket, Key: file.key })
                     .createReadStream();
@@ -76,16 +75,20 @@ module.exports.app = async (event, context, callback) => {
     });
 
     archive.on("progress", (progress) => {
-        console.log(
-            `archive ${outputKey} progress: ${progress.entries.processed} / ${progress.entries.total}`
-        );
+        if (progress.entries.processed % 10 === 0) {
+            console.log(
+                `archive ${outputKey} progress: ${progress.entries.processed} / ${progress.entries.total}`
+            );
+        }
     });
 
     s3Upload.on("httpUploadProgress", (progress) => {
-        console.log(`upload ${outputKey}, loaded size: ${progress.loaded}`);
-        console.log(
-            `memory usage: ${process.memoryUsage().heapUsed / 1024 / 1024} MB`
-        );
+        if (progress.loaded % (1024 * 1024) === 0) {
+            console.log(`upload ${outputKey}, loaded size: ${progress.loaded}`);
+            console.log(
+                `memory usage: ${process.memoryUsage().heapUsed / 1024 / 1024} MB`
+            );
+        }
     });
 
     await new Promise((resolve, reject) => {
@@ -126,12 +129,7 @@ const listObjects = async (bucket, prefix) => {
     const result = [];
     while (true) {
         let data = await s3.listObjectsV2(params).promise();
-        result.push(
-            ...data.Contents.map((item) => {
-                const fileName = item.Key.replace(prefix, "");
-                return { key: item.Key, fileName };
-            })
-        );
+        result.push(...getContents(data));
         if (!data.IsTruncated) {
             break;
         }
@@ -140,6 +138,12 @@ const listObjects = async (bucket, prefix) => {
     return result;
 };
 
+const getContents = (data) => {
+    return data.Contents.map((item) => {
+        const fileName = item.Key.replace(prefix, "");
+        return { key: item.Key, fileName };
+    });
+};
 const onEvent = (event, reject) => {
     console.log(`on: ${event}`);
     reject();
